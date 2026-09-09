@@ -5,6 +5,8 @@ export function createEngine({ now = () => Date.now() } = {}) {
   let prior = null;
   let activeProposal = null;
   let orderRule = null;
+  let orderVersion = 0;
+  const sessionId = `session-${now()}`;
   const refused = new Set();
   const state = {
     config: { targetScale: 1, dwellMs: 800, confirmation: 'direct', modality: 'pointer' },
@@ -12,7 +14,7 @@ export function createEngine({ now = () => Date.now() } = {}) {
     availability: { pointer: true, keyboard: true, gaze: false, switch: false, blink: false, eeg: false },
     reliability: {}, recovery: null,
   };
-  const record = (type, details = {}) => state.history.push({ id: ++sequence, timestamp: now(), type, ...details });
+  const record = (type, details = {}) => state.history.push({ id: ++sequence, timestamp: now(), sessionId, type, ...details });
   const usable = config => state.availability[config.modality] === true &&
     (!['switch', 'blink'].includes(config.confirmation) || state.availability[config.confirmation] === true);
   const publishProposal = proposal => {
@@ -26,10 +28,48 @@ export function createEngine({ now = () => Date.now() } = {}) {
   function installOrder(order) {
     const check = validateOrder(order,{now:now()});
     if(!check.valid || order.minDwellMs > 1400) return {ok:false,reason:'Order invalid or incompatible with runtime bounds.'};
-    if(orderRule && order.version <= orderRule.version) return {ok:false,reason:'Order revision must increase.'};
-    orderRule=structuredClone(order);clearProposal();
+    if(order.version <= orderVersion) return {ok:false,reason:'Order revision must increase.'};
+    orderRule=structuredClone(order);orderVersion=order.version;clearProposal();
     record('order-installed',{version:order.version,author:order.author,assurance:check.assurance});
     return {ok:true};
+  }
+  function reviewExpiredOrder() {
+    if(!orderRule || now()<Date.parse(orderRule.expiresAt)) return {ok:false,reason:'No expired test order to review.'};
+    record('expired-order-reviewed',{version:orderRule.version,authority:'explicit-demo-user-review'});
+    orderRule=null; clearProposal(); state.recovery=null;
+    return {ok:true};
+  }
+  function reportOutcome(feedback) {
+    if(!['helpful','unhelpful','unknown'].includes(feedback))return {ok:false,reason:'Invalid feedback'};
+    record('user-feedback',{feedback,config:{...state.config},communicationOutcome:'unknown'});
+    if(feedback==='unhelpful' && prior) refused.add(JSON.stringify(Object.fromEntries(Object.entries(state.config).filter(([key,value])=>value!==prior[key]))));
+    return {ok:true};
+  }
+  function exportMemory() {
+    return {schemaVersion:1,events:state.history.slice(-300).map(({timestamp,type,sessionId,feedback,config})=>({timestamp,type,sessionId,feedback,config})),refused:[...refused],order:orderRule,orderVersion};
+  }
+  function importMemory(memory) {
+    if(memory?.schemaVersion!==1||!Array.isArray(memory.events)||memory.events.length>300) return {ok:false,reason:'Invalid memory package'};
+    const allowed=new Set(['observed','applied','reversed','rejected','proposed','no-change','user-feedback','order-installed','expired-order-reviewed','recovery','recovery-reviewed','confirmed','selected']);
+    for(const event of memory.events) if(allowed.has(event.type)&&Number.isFinite(event.timestamp)&&event.timestamp<=now()) {
+      state.history.push({id:++sequence,timestamp:event.timestamp,type:event.type,sessionId:String(event.sessionId||'previous'),historical:true,
+        ...(['helpful','unhelpful','unknown'].includes(event.feedback)?{feedback:event.feedback}:{} )});
+    }
+    // Historical sensor data never becomes current evidence or transfers calibration.
+    if(memory.order && validateOrder(memory.order,{now:Date.parse(memory.order.effectiveAt)}).valid && memory.order.minDwellMs<=1400) orderRule=structuredClone(memory.order);
+    orderVersion=Number.isInteger(memory.orderVersion)?Math.max(0,memory.orderVersion):0;
+    for(const entry of (Array.isArray(memory.refused)?memory.refused:[]).slice(0,100)) {
+      try {const patch=JSON.parse(entry);if(patch && typeof patch==='object' && Object.keys(patch).every(k=>['targetScale','dwellMs','confirmation','modality'].includes(k)))refused.add(JSON.stringify(patch));}catch{}
+    }
+    return {ok:true};
+  }
+  function voiceContribution(text) {
+    const evidence=state.reliability.voice;
+    if(!evidence || evidence.status!=='qualified'||now()-evidence.timestamp>60000||evidence.coverage<.6||evidence.errorRate>=.3) {
+      record('voice-abstained',{reason:'Voice evidence insufficient, stale or unreliable; correction route retained.'});
+      return {ok:false,reason:'Voice is unreliable or untested. Correct the transcript, then explicitly approve the corrected text.'};
+    }
+    state.draft=String(text);record('voice-draft',{communicationOutcome:'unknown'});return {ok:true};
   }
   function requestConfiguration(patch) {
     if (!patch || typeof patch !== 'object' || Array.isArray(patch) || !Object.keys(patch).length || Object.keys(patch).some(key => !['targetScale', 'dwellMs', 'confirmation', 'modality'].includes(key))) {
@@ -75,6 +115,10 @@ export function createEngine({ now = () => Date.now() } = {}) {
       if (fallback) { patch = { modality: fallback, confirmation: 'direct' }; reason = 'Current route unavailable; locally enabled fallback preserves the draft.'; }
       else { state.recovery = { reason: 'No available fallback. Request assistance.', timestamp: now() }; record('recovery', state.recovery); return null; }
     } else if (reliability?.status === 'qualified' && reliability.configVersion === state.history.filter(x => x.type === 'applied').length && now() - reliability.timestamp <= 60000) {
+      const context=state.contextEvidence;
+      if(context && (context.status==='unknown'||now()-context.timestamp>60000) && reliability.validCount<5) {
+        record('no-change',{reason:'Context uncertain; collect more direct interaction evidence before support.'});clearProposal();return null;
+      }
       if (reliability.errorRate >= 0.3 && state.config.targetScale < 1.5) {
         patch = { targetScale: Math.min(1.5, state.config.targetScale + 0.25) }; reason = 'Qualified trial errors: offer a bounded target enlargement.';
       } else if (reliability.latencyMs > 1500 && state.config.dwellMs < 1400) {
@@ -130,7 +174,8 @@ export function createEngine({ now = () => Date.now() } = {}) {
     state.recovery = null; clearProposal(); record('recovery-reviewed', { authority: 'explicit-user-review', config: { ...state.config } });
     return { ok: true };
   }
-  return { state, observe, propose, apply, reject, undo, select, confirm, requestConfiguration, reviewRecovery, installOrder,
+  return { state, observe, propose, apply, reject, undo, select, confirm, requestConfiguration, reviewRecovery, installOrder, reviewExpiredOrder, reportOutcome, exportMemory, importMemory, voiceContribution,
+    getOrderStatus(){return orderRule?{version:orderRule.version,expiresAt:orderRule.expiresAt,expired:now()>=Date.parse(orderRule.expiresAt)}:null;},
     setDraft(text) { state.draft = String(text); return state.draft; } };
 }
 

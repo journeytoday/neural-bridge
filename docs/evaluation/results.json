@@ -1,0 +1,567 @@
+{
+  "schemaVersion": 1,
+  "seeds": [
+    901,
+    902,
+    903,
+    904,
+    905,
+    906,
+    907,
+    908,
+    909,
+    910
+  ],
+  "simulationOnly": true,
+  "assumptions": "60 fictional selections/episode; trials 20–39 harder; target size reduces misses and adds time; keyboard has fixed error/time. Feedback perfectly observed by simulator; not natural communication ground truth. No training or parameter fitting on these seeds.",
+  "limitations": "Small deterministic mechanism test, not a powered study or evidence of clinical advantage. Shared action-dependent outcomes and random numbers; raw per-episode results retained. All proposed changes are approved by a scripted user, an unrealistic acceptance assumption.",
+  "totals": [
+    {
+      "policy": "fixed",
+      "trials": 600,
+      "completed": 465,
+      "misses": 135,
+      "elapsedMs": 480000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "policy": "reactive",
+      "trials": 600,
+      "completed": 480,
+      "misses": 120,
+      "elapsedMs": 521650,
+      "changes": 177,
+      "prompts": 177
+    },
+    {
+      "policy": "personalized",
+      "trials": 600,
+      "completed": 489,
+      "misses": 111,
+      "elapsedMs": 547200,
+      "changes": 22,
+      "prompts": 22
+    },
+    {
+      "policy": "fallback",
+      "trials": 600,
+      "completed": 519,
+      "misses": 81,
+      "elapsedMs": 813900,
+      "changes": 10,
+      "prompts": 10
+    },
+    {
+      "policy": "neuralbridge",
+      "trials": 600,
+      "completed": 488,
+      "misses": 112,
+      "elapsedMs": 596200,
+      "changes": 19,
+      "prompts": 19
+    }
+  ],
+  "episodes": [
+    {
+      "seed": 901,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 45,
+      "misses": 15,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 902,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 47,
+      "misses": 13,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 903,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 46,
+      "misses": 14,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 904,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 43,
+      "misses": 17,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 905,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 46,
+      "misses": 14,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 906,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 49,
+      "misses": 11,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 907,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 46,
+      "misses": 14,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 908,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 909,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 47,
+      "misses": 13,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 910,
+      "policy": "fixed",
+      "trials": 60,
+      "completed": 45,
+      "misses": 15,
+      "elapsedMs": 48000,
+      "changes": 0,
+      "prompts": 0
+    },
+    {
+      "seed": 901,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 46,
+      "misses": 14,
+      "elapsedMs": 52900,
+      "changes": 22,
+      "prompts": 22
+    },
+    {
+      "seed": 902,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 48,
+      "misses": 12,
+      "elapsedMs": 52200,
+      "changes": 24,
+      "prompts": 24
+    },
+    {
+      "seed": 903,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 47,
+      "misses": 13,
+      "elapsedMs": 52200,
+      "changes": 10,
+      "prompts": 10
+    },
+    {
+      "seed": 904,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 44,
+      "misses": 16,
+      "elapsedMs": 53600,
+      "changes": 22,
+      "prompts": 22
+    },
+    {
+      "seed": 905,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 48,
+      "misses": 12,
+      "elapsedMs": 52200,
+      "changes": 14,
+      "prompts": 14
+    },
+    {
+      "seed": 906,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 51150,
+      "changes": 18,
+      "prompts": 18
+    },
+    {
+      "seed": 907,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 48,
+      "misses": 12,
+      "elapsedMs": 52200,
+      "changes": 16,
+      "prompts": 16
+    },
+    {
+      "seed": 908,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 50800,
+      "changes": 12,
+      "prompts": 12
+    },
+    {
+      "seed": 909,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 50,
+      "misses": 10,
+      "elapsedMs": 51500,
+      "changes": 18,
+      "prompts": 18
+    },
+    {
+      "seed": 910,
+      "policy": "reactive",
+      "trials": 60,
+      "completed": 46,
+      "misses": 14,
+      "elapsedMs": 52900,
+      "changes": 21,
+      "prompts": 21
+    },
+    {
+      "seed": 901,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 48,
+      "misses": 12,
+      "elapsedMs": 54650,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 902,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 50,
+      "misses": 10,
+      "elapsedMs": 53250,
+      "changes": 4,
+      "prompts": 4
+    },
+    {
+      "seed": 903,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 47,
+      "misses": 13,
+      "elapsedMs": 57100,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 904,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 43,
+      "misses": 17,
+      "elapsedMs": 58150,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 905,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 49,
+      "misses": 11,
+      "elapsedMs": 56050,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 906,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 55700,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 907,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 50,
+      "misses": 10,
+      "elapsedMs": 53600,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 908,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 53,
+      "misses": 7,
+      "elapsedMs": 52550,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 909,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 50,
+      "misses": 10,
+      "elapsedMs": 51850,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 910,
+      "policy": "personalized",
+      "trials": 60,
+      "completed": 47,
+      "misses": 13,
+      "elapsedMs": 54300,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 901,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 81300,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 902,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 53,
+      "misses": 7,
+      "elapsedMs": 94800,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 903,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 84900,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 904,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 82200,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 905,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 53,
+      "misses": 7,
+      "elapsedMs": 78600,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 906,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 80400,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 907,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 53,
+      "misses": 7,
+      "elapsedMs": 81300,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 908,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 78600,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 909,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 73200,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 910,
+      "policy": "fallback",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 78600,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 901,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 49,
+      "misses": 11,
+      "elapsedMs": 67775,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 902,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 51,
+      "misses": 9,
+      "elapsedMs": 65675,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 903,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 48,
+      "misses": 12,
+      "elapsedMs": 59375,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 904,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 43,
+      "misses": 17,
+      "elapsedMs": 60075,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 905,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 47,
+      "misses": 13,
+      "elapsedMs": 58325,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 906,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 50,
+      "misses": 10,
+      "elapsedMs": 57975,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 907,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 50,
+      "misses": 10,
+      "elapsedMs": 58675,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 908,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 52725,
+      "changes": 1,
+      "prompts": 1
+    },
+    {
+      "seed": 909,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 52,
+      "misses": 8,
+      "elapsedMs": 56925,
+      "changes": 2,
+      "prompts": 2
+    },
+    {
+      "seed": 910,
+      "policy": "neuralbridge",
+      "trials": 60,
+      "completed": 46,
+      "misses": 14,
+      "elapsedMs": 58675,
+      "changes": 2,
+      "prompts": 2
+    }
+  ]
+}

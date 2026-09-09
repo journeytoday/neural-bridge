@@ -3,15 +3,16 @@ import {MedicationTimeline,signTestOrder,enforceDwell} from './platform.js';
 import {createClient} from './transport.js';
 import {decodeVideoFixture} from './video.js';
 import {LocalLanguageModel} from './language.js';
+import {Vocabulary} from './vocabulary.js';
 const $=id=>document.getElementById(id), engine=createEngine(), model=new LocalLanguageModel();
 const client=createClient(), medication=new MedicationTimeline();
 let mode='quick', lastRequest=null, dwellTimer=null;
 const phrases=['I would like some water.','Please give me more time.','I need to change position.','Let’s talk for a while.','That is not what I meant.','Thank you for being here.'];
 client.getProfile('demo-user').catch(async error=>{if(error.status===404)return client.createProfile('demo-user',{language:'en',phrases,voice:'default'});throw error;}).catch(error=>{$('profile-result').textContent='Profile service: '+error.message;});
-try{engine.setDraft(localStorage.getItem('neuralbridge-draft')||'');}catch{}
+try{engine.setDraft(localStorage.getItem('neuralbridge-draft')||'');const memory=localStorage.getItem('neuralbridge-memory');if(memory)engine.importMemory(JSON.parse(memory));}catch{}
 $('draft').value=engine.state.draft;
 function notice(text){$('notice').textContent=text;}
-function save(){try{localStorage.setItem('neuralbridge-draft',engine.state.draft);}catch{document.querySelector('.session').textContent='Draft is held in this tab only';}}
+function save(){try{localStorage.setItem('neuralbridge-draft',engine.state.draft);localStorage.setItem('neuralbridge-memory',JSON.stringify(engine.exportMemory()));}catch{document.querySelector('.session').textContent='Draft is held in this tab only';}}
 function result(value,success){notice(value?.ok===false?value.reason:success);render();}
 function render(){
  const s=engine.state;
@@ -34,7 +35,7 @@ function render(){
 function updateDraft(){ $('draft').value=engine.state.draft;render(); }
 function confirm(method){result(engine.confirm(method),'Phrase added. Review your words before speaking.');updateDraft();}
 function pick(text){result(engine.select(text),'Phrase selected. Confirm to add it to your draft.');}
-phrases.forEach((text,i)=>{const b=document.createElement('button');b.className='phrase';b.dataset.text=text;const symbol=document.createElement('span');symbol.textContent=['◡','◷','↔','☏','↶','♡'][i];symbol.setAttribute('aria-hidden','true');b.append(symbol,document.createTextNode(text));b.addEventListener('click',()=>pick(text));b.addEventListener('pointerenter',()=>{if(engine.state.config.confirmation==='dwell'){pick(text);dwellTimer=setTimeout(()=>confirm('dwell'),engine.state.config.dwellMs+20);}});b.addEventListener('pointerleave',()=>clearTimeout(dwellTimer));$('board').append(b);});
+phrases.forEach((text,i)=>{const b=document.createElement('button');b.className='phrase';b.dataset.text=text;const symbol=document.createElement('span');symbol.textContent=['◡','◷','↔','☏','↶','♡'][i];symbol.setAttribute('aria-hidden','true');b.append(symbol,document.createTextNode(text));b.addEventListener('click',()=>{if(engine.state.config.confirmation!=='dwell')pick(text);});b.addEventListener('pointerenter',()=>{if(engine.state.config.confirmation==='dwell'){pick(text);dwellTimer=setTimeout(()=>confirm('dwell'),engine.state.config.dwellMs+20);}});b.addEventListener('pointerleave',()=>clearTimeout(dwellTimer));$('board').append(b);});
 $('draft').addEventListener('input',()=>{engine.setDraft($('draft').value);save();});
 $('confirm').onclick=()=>confirm(engine.state.config.confirmation);
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&engine.state.config.confirmation==='switch'&&!['TEXTAREA','INPUT','SELECT','BUTTON'].includes(e.target.tagName)){e.preventDefault();confirm('switch');}if(e.code==='Escape'){window.speechSynthesis?.cancel();notice('Speech stopped.');}});
@@ -58,7 +59,7 @@ $('replay').onclick=()=>{
 function fusion(conflict){const now=Date.now();const f=fuseEvidence({gaze:{target:phrases[0],quality:.9,timestamp:now},eeg:{target:conflict?phrases[1]:phrases[0],quality:.9,timestamp:now+20}});$('signal-result').textContent=`Synthetic fusion: ${f.status}. ${f.target?'Candidate selected; explicit confirmation still required.':'No selection made.'}`;if(f.target)pick(f.target);}
 $('fusion').onclick=()=>fusion(false);$('conflict').onclick=()=>fusion(true);
 $('blink').onclick=()=>{const frames=[1,.1,.1,.1,1].map((openness,i)=>({openness,timestamp:i*80,quality:.95}));const b=detectBlinkCandidate(frames);$('signal-result').textContent=`Synthetic openness replay: ${b.candidate?'blink candidate':'abstain'}, ${b.durationMs} ms. Not a camera/video decoder.`;if(b.candidate&&engine.state.config.confirmation==='blink')confirm('blink');};
-$('voice-draft').onclick=()=>{engine.setDraft($('transcript').value);updateDraft();notice('Simulated transcript in draft. Correct any words before speaking.');};
+$('voice-draft').onclick=()=>{result(engine.voiceContribution($('transcript').value),'Qualified simulated transcript copied to draft. Review before speaking.');updateDraft();};
 // Explicit proposals exercise alternative confirmation routes without inferring consent.
 for(const method of ['switch','blink','dwell']){const b=document.createElement('button');b.textContent=`Try ${method} confirmation`;b.onclick=()=>{engine.observe({modality:method,available:true,quality:.95,provenance:'synthetic-enabled-route'});engine.requestConfiguration({confirmation:method});render();};$('signal-result').before(b);}
 async function safely(fn,target){try{const r=await fn();$(target).textContent=typeof r==='string'?r:JSON.stringify(r,null,2);}catch(e){$(target).textContent=e.message;}}
@@ -74,7 +75,7 @@ $('timeout').onclick=()=>safely(()=>client.simulateTimeout(lastRequest),'care-re
 function mi(noIntent){const now=Date.now();lastRequest='mi-'+crypto.randomUUID();return client.routeMI({id:lastRequest,intent:'help',confidence:.98,quality:.95,connected:true,timestamp:now,noIntent});}
 $('mi').onclick=()=>safely(()=>mi(false),'care-result');$('no-intent').onclick=()=>safely(()=>mi(true),'care-result');
 $('med-ack').onclick=()=>{const r=medication.acknowledge('fictional-1');$('med-result').textContent=`Reminder acknowledged. Administration: ${r.administration}. Acknowledgement does not mean taken.`;};
-$('order').onclick=()=>{const now=Date.now();const order=signTestOrder({author:'demo-clinician',subject:'demo-user',purpose:'interaction',version:1,effectiveAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+3600000).toISOString(),permissions:['interaction:dwell'],minDwellMs:1000});const validation=engine.installOrder(order);const dwellMs=enforceDwell(engine.state.config.dwellMs,order,{now});engine.requestConfiguration({dwellMs,confirmation:'dwell'});$('order-result').textContent=`Installed sample order checks: ${validation.ok?'passed':'failed'}. Minimum dwell ${dwellMs} ms proposed for your approval. Later changes and undo must respect this bound. Test checksum only.`;render();};
+$('order').onclick=()=>{const now=Date.now();const order=signTestOrder({author:'demo-clinician',subject:'demo-user',purpose:'interaction',version:now,effectiveAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+5000).toISOString(),permissions:['interaction:dwell'],minDwellMs:1000});const validation=engine.installOrder(order);const dwellMs=enforceDwell(engine.state.config.dwellMs,order,{now});engine.requestConfiguration({dwellMs,confirmation:'dwell'});$('order-result').textContent=`Installed sample order checks: ${validation.ok?'passed':'failed'}. Minimum dwell ${dwellMs} ms proposed for your approval. Expires after 5 seconds for the demo. Review expiry below. Test checksum only.`;render();};
 $('export-log').onclick=()=>download('neuralbridge-evidence.json',JSON.stringify({schemaVersion:1,simulation:true,clinicalEvidence:false,events:engine.state.history},null,2));
 $('demo-toggle').onclick=()=>{$('demo').hidden=!$('demo').hidden;$('demo-toggle').setAttribute('aria-expanded',String(!$('demo').hidden));};
 render();
@@ -87,3 +88,30 @@ $('video-replay').onclick=async()=>{
   if(outcome.candidate && engine.state.config.confirmation==='blink')confirm('blink');
  }catch(error){$('video-result').textContent=error.message;}finally{button.disabled=false;}
 };
+
+$('approve-transcript').onclick=()=>{engine.setDraft($('transcript').value);updateDraft();notice('Your corrected text was approved. Speech still requires your action.');};
+$('review-order').onclick=()=>{result(engine.reviewExpiredOrder(),'Expired test order reviewed. Existing settings kept; fresh adaptation is available.');$('order-result').textContent=engine.getOrderStatus()?'Order is still active; wait until expiry.':'No active test order.';};
+$('helpful').onclick=()=>result(engine.reportOutcome('helpful'),'Your feedback is saved locally. It does not establish clinical benefit.');
+$('unhelpful').onclick=()=>result(engine.reportOutcome('unhelpful'),'Feedback saved. Use Undo if you want the previous setup.');
+$('forget-history').onclick=()=>{localStorage.removeItem('neuralbridge-memory');location.reload();};
+let vocabulary;
+function showVocabulary(){
+ if(!vocabulary)return;
+ $('word-results').replaceChildren();
+ for(const word of vocabulary.search($('word-search').value,$('word-environment').value)){
+  const b=document.createElement('button');b.textContent=word;
+  b.onclick=()=>{if(engine.state.config.confirmation!=='dwell')pick(word);};
+  b.onpointerenter=()=>{if(engine.state.config.confirmation==='dwell'){pick(word);dwellTimer=setTimeout(()=>confirm('dwell'),engine.state.config.dwellMs+20);}};
+  b.onpointerleave=()=>clearTimeout(dwellTimer);$('word-results').append(b);
+ }
+ $('personal-words').textContent=vocabulary.export().personal.map(p=>p.term+' ('+p.environment+')').join(', ')||'No personal words saved.';
+}
+fetch('/assets/vocabulary-en.json').then(r=>{if(!r.ok)throw Error('Vocabulary unavailable');return r.json();}).then(data=>{
+ vocabulary=new Vocabulary(data);try{const saved=localStorage.getItem('neuralbridge-vocabulary');if(saved)vocabulary.import(JSON.parse(saved));}catch{}
+ showVocabulary();
+}).catch(error=>{$('word-results').textContent=error.message+'. Free text still works.';});
+$('word-search').oninput=showVocabulary;$('word-environment').onchange=showVocabulary;
+for(const action of ['add','remove'])$('word-'+action).onclick=()=>{
+ try{if(!vocabulary)throw Error('Vocabulary is still loading');vocabulary[action]($('personal-term').value,$('word-environment').value);localStorage.setItem('neuralbridge-vocabulary',JSON.stringify(vocabulary.export()));showVocabulary();notice('Personal vocabulary updated only at your request.');}catch(error){notice(error.message);}
+};
+$('word-export').onclick=()=>{if(vocabulary)download('personal-vocabulary.json',JSON.stringify(vocabulary.export()));};
