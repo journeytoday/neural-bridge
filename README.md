@@ -26,6 +26,6 @@ See [capabilities and remaining work](docs/README.md) and [SDK contracts](docs/S
 
 ## Privacy and boundaries
 
-The draft is stored in this browser's local storage and removed using Clear draft. Other state is in memory and resets on reload. Exported evidence includes selected phrase text: use fictional content for demonstrations. No data is sent to outside services. Device voices are ordinary operating-system voices, not cloned personal voices. Model suggestions come from a small locally trained bigram model, not an LLM. The test order checksum is deliberately not cryptographic identity verification.
+The draft is stored in this browser's local storage and removed using Clear draft. Profiles persist locally in the ignored .neuralbridge-data directory; other state is in memory and resets on reload. Exported evidence includes selected phrase text: use fictional content for demonstrations. HTTP requests stay on this computer; no data is sent to outside services. Device voices are ordinary operating-system voices, not cloned personal voices. Model suggestions come from a small locally trained bigram model, not an LLM. The test order checksum is deliberately not cryptographic identity verification.
 
 The server binds to loopback. Do not expose it publicly as a production service. Public repository visibility does not mean a live deployment exists.

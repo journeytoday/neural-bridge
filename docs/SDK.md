@@ -24,3 +24,9 @@ Observations include timestamp, modality, task/context, configuration version, q
 `SandboxSink` provides request/acknowledge/complete/tick/list. Duplicate IDs with matching payload return the original request; conflicting payloads fail. Timeout does not imply human completion. `routeMICandidate` applies a fixed synthetic candidate gate without generative interpretation.
 
 `MedicationTimeline` separates reminder acknowledgement and reported administration. `signTestOrder`, `validateOrder`, and `enforceDwell` demonstrate test integrity and scope checks. The checksum is not security-grade authentication, and the sample UI proposes a dwell rule rather than establishing a trusted clinical authority service.
+
+## HTTP transport and independent host
+
+`createClient()` from src/transport.js exposes request/acknowledge/complete/simulateTimeout/routeMI/listRequests, and createProfile/getProfile/updateProfile/revokeProfile/exportProfile/importProfile. The server binds to loopback, rejects cross-origin writes, bounds JSON bodies and atomically persists profile revisions. Request records are ephemeral sandbox state. Host B at /host-b.html fetches preferences and requires a trusted target activation plus fresh server version check. Offline cache never proves current authorization.
+
+`engine.installOrder(order)` installs a validated test constraint; later apply and undo enforce its minimum dwell, and expired orders fail closed. The test checksum remains non-cryptographic. Clearing/reviewing an expired order needs a dedicated future UX; ordinary free text remains available.

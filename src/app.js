@@ -1,12 +1,13 @@
 import {createEngine,fuseEvidence,detectBlinkCandidate} from './engine.js';
-import {ProfileService,SandboxSink,MedicationTimeline,signTestOrder,validateOrder,enforceDwell,routeMICandidate} from './platform.js';
+import {MedicationTimeline,signTestOrder,enforceDwell} from './platform.js';
+import {createClient} from './transport.js';
+import {decodeVideoFixture} from './video.js';
 import {LocalLanguageModel} from './language.js';
 const $=id=>document.getElementById(id), engine=createEngine(), model=new LocalLanguageModel();
-const service=new ProfileService(), hostA=service.connectHost('A'), hostB=service.connectHost('B');
-const sink=new SandboxSink({timeoutMs:30000}), medication=new MedicationTimeline();
+const client=createClient(), medication=new MedicationTimeline();
 let mode='quick', lastRequest=null, dwellTimer=null;
 const phrases=['I would like some water.','Please give me more time.','I need to change position.','Let’s talk for a while.','That is not what I meant.','Thank you for being here.'];
-service.create('demo-user',{language:'en',phrases,voice:'default'});hostA.sync('demo-user');hostA.validateLocally('demo-user',{hostId:'A',passed:true});
+client.getProfile('demo-user').catch(async error=>{if(error.status===404)return client.createProfile('demo-user',{language:'en',phrases,voice:'default'});throw error;}).catch(error=>{$('profile-result').textContent='Profile service: '+error.message;});
 try{engine.setDraft(localStorage.getItem('neuralbridge-draft')||'');}catch{}
 $('draft').value=engine.state.draft;
 function notice(text){$('notice').textContent=text;}
@@ -36,7 +37,7 @@ function pick(text){result(engine.select(text),'Phrase selected. Confirm to add 
 phrases.forEach((text,i)=>{const b=document.createElement('button');b.className='phrase';b.dataset.text=text;const symbol=document.createElement('span');symbol.textContent=['◡','◷','↔','☏','↶','♡'][i];symbol.setAttribute('aria-hidden','true');b.append(symbol,document.createTextNode(text));b.addEventListener('click',()=>pick(text));b.addEventListener('pointerenter',()=>{if(engine.state.config.confirmation==='dwell'){pick(text);dwellTimer=setTimeout(()=>confirm('dwell'),engine.state.config.dwellMs+20);}});b.addEventListener('pointerleave',()=>clearTimeout(dwellTimer));$('board').append(b);});
 $('draft').addEventListener('input',()=>{engine.setDraft($('draft').value);save();});
 $('confirm').onclick=()=>confirm(engine.state.config.confirmation);
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&engine.state.config.confirmation==='switch'&&!['TEXTAREA','INPUT','SELECT','BUTTON'].includes(e.target.tagName)){e.preventDefault();confirm('switch');}if(e.code==='Escape'){speechSynthesis?.cancel();notice('Speech stopped.');}});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&engine.state.config.confirmation==='switch'&&!['TEXTAREA','INPUT','SELECT','BUTTON'].includes(e.target.tagName)){e.preventDefault();confirm('switch');}if(e.code==='Escape'){window.speechSynthesis?.cancel();notice('Speech stopped.');}});
 $('clear').onclick=()=>{engine.setDraft('');updateDraft();notice('Draft cleared.');};
 $('speak').onclick=()=>{if(!engine.state.draft.trim())return notice('Write or confirm a message first.');if(!('speechSynthesis'in window))return notice('Speech is unavailable in this browser. Your text remains visible.');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(engine.state.draft);u.voice=speechSynthesis.getVoices().find(v=>v.voiceURI===$('voice').value)||null;u.onerror=()=>notice('Speech could not play. Your text remains available; choose another device voice.');u.onend=()=>notice('Speech finished. Whether the message was understood remains unknown.');speechSynthesis.speak(u);notice('Speaking your approved draft. Stop speech is always available.');};
 $('stop').onclick=()=>{if('speechSynthesis'in window)speechSynthesis.cancel();notice('Speech stopped.');};
@@ -60,21 +61,29 @@ $('blink').onclick=()=>{const frames=[1,.1,.1,.1,1].map((openness,i)=>({openness
 $('voice-draft').onclick=()=>{engine.setDraft($('transcript').value);updateDraft();notice('Simulated transcript in draft. Correct any words before speaking.');};
 // Explicit proposals exercise alternative confirmation routes without inferring consent.
 for(const method of ['switch','blink','dwell']){const b=document.createElement('button');b.textContent=`Try ${method} confirmation`;b.onclick=()=>{engine.observe({modality:method,available:true,quality:.95,provenance:'synthetic-enabled-route'});engine.requestConfiguration({confirmation:method});render();};$('signal-result').before(b);}
-function safely(fn,target){try{const r=fn();$(target).textContent=typeof r==='string'?r:JSON.stringify(r,null,2);}catch(e){$(target).textContent=e.message;}}
-$('transfer').onclick=()=>safely(()=>{const r=hostB.sync('demo-user');return `Host B received profile v${r.profile.version}. Local validation: ${r.validated?'passed':'required'}. Calibration not copied.`;},'profile-result');
-$('validate-host').onclick=()=>safely(()=>{hostB.validateLocally('demo-user',{hostId:'B',passed:true,source:'manual-sandbox-check'});return 'Host B sandbox check passed. This demonstrates the contract, not hardware calibration.';},'profile-result');
+async function safely(fn,target){try{const r=await fn();$(target).textContent=typeof r==='string'?r:JSON.stringify(r,null,2);}catch(e){$(target).textContent=e.message;}}
+$('transfer').onclick=()=>safely(async()=>{const r=await client.getProfile('demo-user');return `Server profile v${r.version} is available. Open host B and perform its separate local check.`;},'profile-result');
+$('validate-host').onclick=()=>{window.open('/host-b.html','neuralbridge-host-b','noopener');};
 function download(name,text,type='application/json'){const a=document.createElement('a');const url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500);}
-$('export-profile').onclick=()=>download('neuralbridge-profile.json',service.export('demo-user'));
-$('import-profile').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;if(file.size>100000)throw new Error('Profile file too large.');const imported=new ProfileService();const profile=imported.import(await file.text());$('profile-result').textContent=`Imported ${profile.id} into an isolated local service. Fresh local validation required; no calibration adopted.`;}catch(error){$('profile-result').textContent=error.message;}};
-function careView(){ $('care-result').textContent=JSON.stringify(sink.list(),null,2); }
-$('help').onclick=()=>{lastRequest='help-'+Date.now();sink.request({id:lastRequest,action:'help'});careView();};
-$('ack').onclick=()=>safely(()=>{const r=sink.acknowledge(lastRequest);return r;},'care-result');
-$('complete').onclick=()=>safely(()=>sink.complete(lastRequest),'care-result');
-$('timeout').onclick=()=>{sink.tick(Date.now()+31000);careView();};
-function mi(noIntent){const now=Date.now();lastRequest='mi-'+now;const r=routeMICandidate({id:lastRequest,intent:'help',confidence:.98,quality:.95,connected:true,timestamp:now,noIntent},sink,now);$('care-result').textContent=JSON.stringify(r,null,2);}
-$('mi').onclick=()=>mi(false);$('no-intent').onclick=()=>mi(true);
+$('export-profile').onclick=()=>safely(async()=>{download('neuralbridge-profile.json',JSON.stringify(await client.exportProfile('demo-user')));return 'Profile exported without device calibration.';},'profile-result');
+$('import-profile').onchange=async e=>{try{const file=e.target.files[0];if(!file)return;if(file.size>100000)throw new Error('Profile file too large.');const profile=await client.importProfile(await file.text());$('profile-result').textContent=`Imported ${profile.id} into the local profile service. Fresh local validation required. Existing IDs are never overwritten.`;}catch(error){$('profile-result').textContent=error.message;}};
+$('help').onclick=()=>safely(async()=>{lastRequest='help-'+crypto.randomUUID();return client.request({id:lastRequest,action:'help'});},'care-result');
+$('ack').onclick=()=>safely(()=>client.acknowledge(lastRequest),'care-result');
+$('complete').onclick=()=>safely(()=>client.complete(lastRequest),'care-result');
+$('timeout').onclick=()=>safely(()=>client.simulateTimeout(lastRequest),'care-result');
+function mi(noIntent){const now=Date.now();lastRequest='mi-'+crypto.randomUUID();return client.routeMI({id:lastRequest,intent:'help',confidence:.98,quality:.95,connected:true,timestamp:now,noIntent});}
+$('mi').onclick=()=>safely(()=>mi(false),'care-result');$('no-intent').onclick=()=>safely(()=>mi(true),'care-result');
 $('med-ack').onclick=()=>{const r=medication.acknowledge('fictional-1');$('med-result').textContent=`Reminder acknowledged. Administration: ${r.administration}. Acknowledgement does not mean taken.`;};
-$('order').onclick=()=>{const now=Date.now();const order=signTestOrder({author:'demo-clinician',subject:'demo-user',purpose:'interaction',version:1,effectiveAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+3600000).toISOString(),permissions:['interaction:dwell'],minDwellMs:1000});const validation=validateOrder(order,{now});const dwellMs=enforceDwell(engine.state.config.dwellMs,order,{now});engine.requestConfiguration({dwellMs,confirmation:'dwell'});$('order-result').textContent=`Sample checks: ${validation.valid?'passed':'failed'}. Minimum dwell ${dwellMs} ms proposed for your approval. Test checksum only.`;render();};
+$('order').onclick=()=>{const now=Date.now();const order=signTestOrder({author:'demo-clinician',subject:'demo-user',purpose:'interaction',version:1,effectiveAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+3600000).toISOString(),permissions:['interaction:dwell'],minDwellMs:1000});const validation=engine.installOrder(order);const dwellMs=enforceDwell(engine.state.config.dwellMs,order,{now});engine.requestConfiguration({dwellMs,confirmation:'dwell'});$('order-result').textContent=`Installed sample order checks: ${validation.ok?'passed':'failed'}. Minimum dwell ${dwellMs} ms proposed for your approval. Later changes and undo must respect this bound. Test checksum only.`;render();};
 $('export-log').onclick=()=>download('neuralbridge-evidence.json',JSON.stringify({schemaVersion:1,simulation:true,clinicalEvidence:false,events:engine.state.history},null,2));
 $('demo-toggle').onclick=()=>{$('demo').hidden=!$('demo').hidden;$('demo-toggle').setAttribute('aria-expanded',String(!$('demo').hidden));};
 render();
+
+$('video-replay').onclick=async()=>{
+ const button=$('video-replay');button.disabled=true;
+ try{
+  const outcome=await decodeVideoFixture($('blink-video'),`/assets/blink-${$('video-kind').value}.webm`);
+  $('video-result').textContent=`Decoded ${outcome.frames.length} video frames. ${outcome.candidate?'Candidate accepted':'Abstained'}; closure ${outcome.durationMs||0} ms. ${outcome.reason} Openness: ${outcome.frames.map(f=>f.openness.toFixed(1)).join(', ')}; quality minimum ${Math.min(...outcome.frames.map(f=>f.quality))}.`;
+  if(outcome.candidate && engine.state.config.confirmation==='blink')confirm('blink');
+ }catch(error){$('video-result').textContent=error.message;}finally{button.disabled=false;}
+};

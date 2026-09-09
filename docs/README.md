@@ -10,20 +10,20 @@ Implementation date: 9 September 2026. Reference: NeuralBridge Intelligence Laye
 | Adaptation | Quality-qualified trials, bounded target/dwell changes, approval/refusal, expiry, undo, fallback, recovery | Persistence across sessions, richer history-aware reasoning and fair policy comparisons |
 | M01 EEG fusion | Synthetic synchronized candidate agreement; abstains on disagreement or invalid evidence | Real signal replay/decoder and live EEG |
 | M02 physiology | Timestamped synthetic context, quality and missingness in evidence | Context must further qualify cross-channel decisions; no physiological validity established |
-| M03 blink | Synthetic openness samples produce confirmation candidates | Actual camera/video replay pipeline is still required for full v0.1 compliance |
+| M03 blink | WebM video decoding and pixel-measured synthetic geometry; long/short/no-intent/occluded fixtures | Real human-face models and clinical blink validation |
 | M04 speech input | Simulated transcript, editable correction, voice quality observations | ASR optional; stronger reliability orchestration remains |
 | M05 language | Actual small statistical bigram model, local training corpus, editable suggestions, quick/story composition | Broader generative quality and 1,000-word bootstrap vocabulary |
 | M06 voice | Selectable installed device voices, default fallback | Personal voice asset lifecycle and consented cloning |
-| M07 profiles | Versioned local in-memory service, export/import, two test clients, conflict/offline/revocation tests | Persistent service and authenticated cross-device sync |
-| M08 SDK | Browser-compatible ES modules, documented contracts, two logical hosts | Independent host UI/integration and broader conformance suite |
-| M09 care | In-memory sandbox receiver with deduplication, timeout, acknowledgement and completion | Actual HTTP sandbox endpoints required by full v0.1 gate |
+| M07 profiles | Persistent loopback HTTP profile service, export/import, two independent browser hosts, conflict/offline/revocation tests | Authenticated cross-device production sync |
+| M08 SDK | Browser-compatible ES modules and HTTP SDK, independent Host B UI | Broader conformance suite and real devices |
+| M09 care | HTTP sandbox receiver with deduplication, timeout, acknowledgement and completion | Real care integration remains later-stage |
 | M10 medication | Fictional reminder, acknowledgement remains distinct from administration | Imported prescribed plans and timeline visualization |
-| M11 orders | Test author/scope/version/expiry/integrity checks; proposed dwell bound | Production signatures and enduring authoritative rule enforcement |
-| M12 MI alert | Synthetic candidates reach local sink; no-intent/artifacts/low quality rejected | Endpoint transport, calibrated live decoder and supervised evaluation |
+| M11 orders | Installed test order with author/scope/version/expiry/checksum checks; later apply and undo enforce dwell bound | Production signatures; explicit expired-order review UX |
+| M12 MI alert | Synthetic candidates reach HTTP sandbox; no-intent/artifacts/low quality rejected | Calibrated live decoder and supervised evaluation |
 
 ## Verification
 
-14 automated tests pass across engine, language model and platform contracts. Browser walkthrough verified phrase confirmation, target enlargement to 125%, undo to 100%, and draft preservation. Syntax checks pass. Browser speech API is connected to installed device voices; auditory intelligibility was not independently assessed. More extensive browser regression, mobile review, and a recorded walkthrough remain open.
+21 automated tests pass across engine, language model and platform contracts. Browser walkthrough verified phrase confirmation, target enlargement to 125%, undo to 100%, and draft preservation. Syntax checks pass. Browser speech API is connected to installed device voices; auditory intelligibility was not independently assessed. Browser also verified 30-frame WebM decoding (400 ms accepted vs 100 ms abstained), HTTP delivery/acknowledgement/completion, and Host B target validation. More extensive browser regression, mobile review, and a recorded walkthrough remain open.
 
 ## Architecture
 
@@ -39,11 +39,11 @@ flowchart LR
   O --> E
   A --> S[Versioned profile SDK]
   S --> H[Host B local validation]
-  A --> C[In-memory sandbox receiver]
+  A --> C[HTTP sandbox receiver]
 ```
 
 ## Next milestone and cost assumptions
 
-First close software gaps: video replay, actual sandbox transport, durable profile state, authoritative order enforcement, independent second host, vocabulary, recorded walkthrough, and paired policy evaluation. Then select one live access integration and agree a supervised evaluation protocol with appropriate experts. No participant benefit can be inferred from this demonstrator.
+Next close remaining software gaps: stronger cross-channel context/voice orchestration, persistent outcome history, expired-order review, 1,000-word vocabulary, recorded walkthrough, and paired policy evaluation. Video fixture decoding is an actual pixel-processing path, not a human face detector. The four generated fixtures use no personal data. Then select one live access integration and agree a supervised evaluation protocol with appropriate experts. No participant benefit can be inferred from this demonstrator.
 
 Current runtime requires no paid API. Engineering labor, supported hardware, specialist evaluation, hosting/security and contingency remain unquoted. No funding amount or runway has been fabricated; founders must supply capacity and obtain quotations before a costed ask is complete.

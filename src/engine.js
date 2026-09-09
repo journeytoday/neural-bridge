@@ -1,8 +1,10 @@
+import {validateOrder} from './platform.js';
 /** NeuralBridge 0.1: deterministic simulator policy, not a calibrated ability estimator. */
 export function createEngine({ now = () => Date.now() } = {}) {
   let sequence = 0;
   let prior = null;
   let activeProposal = null;
+  let orderRule = null;
   const refused = new Set();
   const state = {
     config: { targetScale: 1, dwellMs: 800, confirmation: 'direct', modality: 'pointer' },
@@ -20,6 +22,15 @@ export function createEngine({ now = () => Date.now() } = {}) {
     return state.proposal;
   };
   const clearProposal = () => { activeProposal = null; state.proposal = null; };
+  const obeysOrder = config => !orderRule || (validateOrder(orderRule, {now:now()}).valid && config.dwellMs >= orderRule.minDwellMs);
+  function installOrder(order) {
+    const check = validateOrder(order,{now:now()});
+    if(!check.valid || order.minDwellMs > 1400) return {ok:false,reason:'Order invalid or incompatible with runtime bounds.'};
+    if(orderRule && order.version <= orderRule.version) return {ok:false,reason:'Order revision must increase.'};
+    orderRule=structuredClone(order);clearProposal();
+    record('order-installed',{version:order.version,author:order.author,assurance:check.assurance});
+    return {ok:true};
+  }
   function requestConfiguration(patch) {
     if (!patch || typeof patch !== 'object' || Array.isArray(patch) || !Object.keys(patch).length || Object.keys(patch).some(key => !['targetScale', 'dwellMs', 'confirmation', 'modality'].includes(key))) {
       record('request-refused', { reason: 'Unsupported configuration fields.' }); return null;
@@ -32,12 +43,16 @@ export function createEngine({ now = () => Date.now() } = {}) {
     const item = { timestamp: now(), task: 'quick-chat', context: 'synthetic-demo', device: 'simulator',
       configVersion: state.history.filter(x => x.type === 'applied').length, quality: 0, missing: false,
       provenance: 'synthetic', ...event };
-    if (!item.modality) throw new Error('Observation requires modality');
+    if (!item.modality || !Number.isFinite(item.timestamp) || item.timestamp > now()) throw new Error('Observation requires modality and a nonfuture timestamp');
+    if(item.available === false) { clearProposal(); state.selected = null; }
+    if(item.modality === 'physiology') {
+      state.contextEvidence={status:!item.missing && !item.artifact && item.quality>=.6?'observed':'unknown',timestamp:item.timestamp,provenance:item.provenance};
+    }
     if (typeof item.available === 'boolean') state.availability[item.modality] = item.available;
     state.observations.push(item);
     const window = state.observations.filter(x => x.modality === item.modality && x.task === item.task &&
       x.context === item.context && x.configVersion === item.configVersion && now() - x.timestamp <= 60000).slice(-20);
-    const valid = window.filter(x => !x.missing && Number.isFinite(x.quality) && x.quality >= 0.6 && x.available !== false);
+    const valid = window.filter(x => !x.missing && !x.artifact && Number.isFinite(x.quality) && x.quality >= 0.6 && x.quality <= 1 && x.available !== false);
     const measured = valid.filter(x => typeof x.error === 'boolean');
     state.reliability[item.modality] = { status: valid.length >= 3 ? 'qualified' : 'insufficient',
       sampleCount: window.length, validCount: valid.length, coverage: valid.length / window.length,
@@ -45,6 +60,7 @@ export function createEngine({ now = () => Date.now() } = {}) {
       errorRate: measured.length ? measured.filter(x => x.error).length / measured.length : null,
       latencyMs: valid.some(x => Number.isFinite(x.latencyMs)) ? valid.filter(x => Number.isFinite(x.latencyMs)).reduce((s, x) => s + x.latencyMs, 0) / valid.filter(x => Number.isFinite(x.latencyMs)).length : null,
       task: item.task, context: item.context, configVersion: item.configVersion, timestamp: item.timestamp, provenance: [...new Set(window.map(x => x.provenance))],
+      contextConfidence:state.contextEvidence?.status==='observed'?'qualified-context':'interaction-only',
       limitations: 'Synthetic task evidence; no diagnosis, inferred consent, or calibrated probability.' };
     record('observed', { observation: item });
     return state.reliability[item.modality];
@@ -78,10 +94,10 @@ export function createEngine({ now = () => Date.now() } = {}) {
     if (!proposal || proposal.id !== id) return { ok: false, reason: 'No matching active proposal.' };
     if (proposal.expiresAt <= now()) { clearProposal(); record('expired', { proposalId: id }); return { ok: false, reason: 'Proposal expired; re-evaluate.' }; }
     const next = { ...state.config, ...proposal.patch };
-    if (state.recovery || !usable(next) || !Number.isFinite(next.targetScale) || !Number.isFinite(next.dwellMs) || !['pointer', 'keyboard', 'gaze', 'switch', 'blink', 'eeg'].includes(next.modality) || next.targetScale < 1 || next.targetScale > 1.5 || next.dwellMs < 600 || next.dwellMs > 1400 ||
+    if (state.recovery || !obeysOrder(next) || !usable(next) || !Number.isFinite(next.targetScale) || !Number.isFinite(next.dwellMs) || !['pointer', 'keyboard', 'gaze', 'switch', 'blink', 'eeg'].includes(next.modality) || next.targetScale < 1 || next.targetScale > 1.5 || next.dwellMs < 600 || next.dwellMs > 1400 ||
       !['direct', 'dwell', 'switch', 'blink'].includes(next.confirmation)) return { ok: false, reason: 'Authority guard: unavailable route or bounds violation.' };
     prior = { ...state.config };
-    state.config = next;
+    state.config = next; state.selected = null;
     clearProposal();
     record('applied', { proposalId: id, reason: proposal.reason, authority: 'explicit-user-approval', before: prior, after: { ...next }, outcome: 'unknown' });
     return { ok: true };
@@ -94,7 +110,7 @@ export function createEngine({ now = () => Date.now() } = {}) {
   }
   function undo() {
     if (!prior) return { ok: false, reason: 'No applied change to undo.' };
-    if (!usable(prior)) { state.recovery = { reason: 'Previous route unavailable; draft preserved. Request assistance before further changes.', timestamp: now() }; record('recovery', state.recovery); return { ok: false, reason: state.recovery.reason }; }
+    if (!usable(prior) || !obeysOrder(prior)) { state.recovery = { reason: 'Previous route unavailable or restricted by order; draft preserved. Review recovery before further changes.', timestamp: now() }; record('recovery', state.recovery); return { ok: false, reason: state.recovery.reason }; }
     state.config = { ...prior }; prior = null; state.recovery = null; clearProposal();
     record('reversed', { config: { ...state.config }, outcome: 'unknown' }); return { ok: true };
   }
@@ -104,7 +120,7 @@ export function createEngine({ now = () => Date.now() } = {}) {
     record('selected', { text: String(target) }); return { ok: true };
   }
   function confirm(method = 'direct') {
-    if (!state.selected || !usable(state.config) || method !== state.config.confirmation) return { ok: false, reason: 'Select a target using the active, available confirmation method.' };
+    if (!state.selected || !usable(state.config) || (method==='dwell' && !obeysOrder(state.config)) || method !== state.config.confirmation) return { ok: false, reason: 'Select a target using the active, available confirmation method; check any active order.' };
     if (method === 'dwell' && now() - state.selected.timestamp < state.config.dwellMs) return { ok: false, reason: 'Dwell interval incomplete.' };
     state.draft = [state.draft, state.selected.text].filter(Boolean).join(' ');
     record('confirmed', { method, text: state.selected.text, communicationOutcome: 'unknown' }); state.selected = null; return { ok: true };
@@ -114,7 +130,7 @@ export function createEngine({ now = () => Date.now() } = {}) {
     state.recovery = null; clearProposal(); record('recovery-reviewed', { authority: 'explicit-user-review', config: { ...state.config } });
     return { ok: true };
   }
-  return { state, observe, propose, apply, reject, undo, select, confirm, requestConfiguration, reviewRecovery,
+  return { state, observe, propose, apply, reject, undo, select, confirm, requestConfiguration, reviewRecovery, installOrder,
     setDraft(text) { state.draft = String(text); return state.draft; } };
 }
 
