@@ -46,10 +46,14 @@ test('dwell requires elapsed interval and correct confirmation route', () => {
   assert.equal(e.confirm('dwell').ok, false); time = 1000; assert.equal(e.confirm('dwell').ok, true); assert.equal(e.state.draft, 'Hello');
 });
 test('fusion abstains on conflict and asynchronous samples; invalid channels lower coverage', () => {
-  const gaze = { target: 'A', quality: 0.9, timestamp: 0 };
+  const gaze = { target: 'A', quality: 0.9, timestamp: Date.now() };
   assert.equal(fuseEvidence({ gaze, eeg: { ...gaze, target: 'B' } }).status, 'conflict');
-  assert.equal(fuseEvidence({ gaze, eeg: { ...gaze, timestamp: 500 } }).target, null);
+  assert.equal(fuseEvidence({ gaze, eeg: { ...gaze, timestamp: gaze.timestamp-500 } }).target, null);
   assert.equal(fuseEvidence({ gaze, eeg: { ...gaze, missing: true } }).coverage, 0.5);
+});
+test('fusion discards artifacts, out-of-range quality and stale/future evidence',()=>{
+ const base={target:'A',quality:.9,timestamp:1000};
+ for(const patch of [{artifact:true},{quality:1.1},{timestamp:-1000},{timestamp:2000}])assert.equal(fuseEvidence({gaze:{...base,...patch},eeg:{...base,...patch},now:1000}).target,null);
 });
 test('blink detection labels only a synthetic candidate and rejects low frame coverage', () => {
   const frames = [1, 0.1, 0.1, 1].map((openness, i) => ({ openness, timestamp: i * 50, quality: 1 }));

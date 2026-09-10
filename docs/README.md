@@ -17,13 +17,13 @@ Implementation date: 9 September 2026. Reference: NeuralBridge Intelligence Laye
 | M07 profiles | Persistent loopback HTTP profile service, export/import, two independent browser hosts, conflict/offline/revocation tests | Authenticated cross-device production sync |
 | M08 SDK | Browser-compatible ES modules and HTTP SDK, independent Host B UI | Broader conformance suite and real devices |
 | M09 care | HTTP sandbox receiver with deduplication, timeout, acknowledgement and completion | Real care integration remains later-stage |
-| M10 medication | Fictional reminder, acknowledgement remains distinct from administration | Imported prescribed plans and timeline visualization |
+| M10 medication | Two-event fictional timeline, acknowledgement, reported administration and unknown/missingness | Imported prescribed plans and real pharmacokinetic research |
 | M11 orders | Installed test order with author/scope/version/expiry/checksum checks; later apply and undo enforce dwell bound | Explicit expired-order review added; production signatures remain later-stage |
 | M12 MI alert | Synthetic candidates reach HTTP sandbox; no-intent/artifacts/low quality rejected | Calibrated live decoder and supervised evaluation |
 
 ## Verification
 
-31 automated tests pass across engine, language model and platform contracts. Browser walkthrough verified phrase confirmation, target enlargement to 125%, undo to 100%, and draft preservation. Syntax checks pass. Browser speech API is connected to installed device voices; auditory intelligibility was not independently assessed. Browser also verified 30-frame WebM decoding (400 ms accepted vs 100 ms abstained), HTTP delivery/acknowledgement/completion, and Host B target validation. Browser also verified word search, explicit personal vocabulary saving, unreliable voice abstention/correction, and expired-order recovery. More extensive browser regression, mobile review, and a recorded walkthrough remain open. See evaluation/README.md for the reproducible comparison and its mixed results.
+33 automated tests pass across engine, language model and platform contracts. Browser walkthrough verified phrase confirmation, target enlargement to 125%, undo to 100%, and draft preservation. Syntax checks pass. Browser speech API is connected to installed device voices; auditory intelligibility was not independently assessed. Browser also verified 30-frame WebM decoding (400 ms accepted vs 100 ms abstained), HTTP delivery/acknowledgement/completion, and Host B target validation. Browser also verified word search, explicit personal vocabulary saving, unreliable voice abstention/correction, and expired-order recovery. The 390-pixel layout was visually reviewed. Keyboard-focus dwell, synthetic posture fallback and per-channel revalidation were checked in-browser. A 42-second annotated walkthrough of actual UI states is included in walkthrough/neuralbridge-walkthrough.webm. See evaluation/README.md for the reproducible comparison and its mixed results.
 
 ## Architecture
 
@@ -44,6 +44,6 @@ flowchart LR
 
 ## Next milestone and cost assumptions
 
-Next: record the walkthrough, complete mobile/end-to-end review, and audit remaining v0.1 acceptance gates against the PRD. History retains at most 300 text-free event summaries and explicit feedback/refusals; it never restores stale sensor evidence or device calibration. Video fixture decoding is an actual pixel-processing path, not a human face detector. The four generated fixtures use no personal data. Then select one live access integration and agree a supervised evaluation protocol with appropriate experts. No participant benefit can be inferred from this demonstrator.
+The bounded software walkthrough and final audit are recorded in ACCEPTANCE.md. Next work is live access integration and evidence gathering, with optional model/voice enhancements. History retains at most 300 text-free event summaries and explicit feedback/refusals; it never restores stale sensor evidence or device calibration. Video fixture decoding is an actual pixel-processing path, not a human face detector. The four generated fixtures use no personal data. Then select one live access integration and agree a supervised evaluation protocol with appropriate experts. No participant benefit can be inferred from this demonstrator.
 
 Current runtime requires no paid API. Engineering labor, supported hardware, specialist evaluation, hosting/security and contingency remain unquoted. No funding amount or runway has been fabricated; founders must supply capacity and obtain quotations before a costed ask is complete.

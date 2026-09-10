@@ -1,6 +1,6 @@
 # NeuralBridge v0.1 POC
 
-A runnable, local adaptive communication demonstrator based on PRD v7.8. This initial implementation demonstrates the core loop; it does **not** yet satisfy every PRD v0.1 completion gate. All sensing is synthetic. No clinical benefit or dependable emergency alerting is claimed.
+A runnable, local adaptive communication demonstrator based on PRD v7.8. This bounded v0.1 implements the software walkthrough and simulated/sandbox module paths; production and clinical scope remain explicitly separate. All sensing is synthetic. No clinical benefit or dependable emergency alerting is claimed.
 
 ## Run
 
@@ -31,3 +31,5 @@ The draft is stored in this browser's local storage and removed using Clear draf
 The server binds to loopback. Do not expose it publicly as a production service. Public repository visibility does not mean a live deployment exists.
 
 Run `node scripts/evaluate.js` for the paired synthetic policy comparison. Vocabulary attribution and its data license are in docs/VOCABULARY.md.
+
+Watch the [42-second walkthrough](docs/walkthrough/neuralbridge-walkthrough.webm), an annotated sequence of actual captured UI states. See [acceptance record](docs/ACCEPTANCE.md).

@@ -4,6 +4,7 @@ import {createClient} from './transport.js';
 import {decodeVideoFixture} from './video.js';
 import {LocalLanguageModel} from './language.js';
 import {Vocabulary} from './vocabulary.js';
+import {PostureReplay} from './posture.js';
 const $=id=>document.getElementById(id), engine=createEngine(), model=new LocalLanguageModel();
 const client=createClient(), medication=new MedicationTimeline();
 let mode='quick', lastRequest=null, dwellTimer=null;
@@ -21,7 +22,7 @@ function render(){
  $('proposal-text').textContent=s.recovery?.reason||s.proposal?.reason||'No change is needed. Refuse and undo remain available.';
  $('apply').disabled=!s.proposal;
  $('selection').textContent=s.selected?`Selected: ${s.selected.text}`:'No phrase selected';
- $('confirm').textContent=s.config.confirmation==='switch'?'Press Space or confirm switch':s.config.confirmation==='blink'?'Use blink replay to confirm':s.config.confirmation==='dwell'?'Hold pointer over phrase to dwell':'Confirm selection';
+ $('confirm').textContent=s.config.confirmation==='switch'?'Press Space or confirm switch':s.config.confirmation==='blink'?'Use blink replay to confirm':s.config.confirmation==='dwell'?'Focus or hold pointer over a phrase to dwell':'Confirm selection';
  $('confirm').disabled=['blink','dwell'].includes(s.config.confirmation);
  for(const b of document.querySelectorAll('.phrase'))b.classList.toggle('selected',b.dataset.text===s.selected?.text);
  $('reliability').replaceChildren();
@@ -35,7 +36,7 @@ function render(){
 function updateDraft(){ $('draft').value=engine.state.draft;render(); }
 function confirm(method){result(engine.confirm(method),'Phrase added. Review your words before speaking.');updateDraft();}
 function pick(text){result(engine.select(text),'Phrase selected. Confirm to add it to your draft.');}
-phrases.forEach((text,i)=>{const b=document.createElement('button');b.className='phrase';b.dataset.text=text;const symbol=document.createElement('span');symbol.textContent=['◡','◷','↔','☏','↶','♡'][i];symbol.setAttribute('aria-hidden','true');b.append(symbol,document.createTextNode(text));b.addEventListener('click',()=>{if(engine.state.config.confirmation!=='dwell')pick(text);});b.addEventListener('pointerenter',()=>{if(engine.state.config.confirmation==='dwell'){pick(text);dwellTimer=setTimeout(()=>confirm('dwell'),engine.state.config.dwellMs+20);}});b.addEventListener('pointerleave',()=>clearTimeout(dwellTimer));$('board').append(b);});
+phrases.forEach((text,i)=>{const b=document.createElement('button');b.className='phrase';b.dataset.text=text;const symbol=document.createElement('span');symbol.textContent=['◡','◷','↔','☏','↶','♡'][i];symbol.setAttribute('aria-hidden','true');b.append(symbol,document.createTextNode(text));b.addEventListener('click',()=>{if(engine.state.config.confirmation!=='dwell')pick(text);});b.addEventListener('pointerenter',()=>{if(engine.state.config.confirmation==='dwell'){pick(text);clearTimeout(dwellTimer);dwellTimer=setTimeout(()=>{if(engine.state.selected)confirm('dwell');},engine.state.config.dwellMs+20);}});b.addEventListener('pointerleave',()=>clearTimeout(dwellTimer));b.addEventListener('focus',()=>{if(engine.state.config.confirmation==='dwell'){pick(text);clearTimeout(dwellTimer);clearTimeout(dwellTimer);dwellTimer=setTimeout(()=>{if(engine.state.selected)confirm('dwell');},engine.state.config.dwellMs+20);}});b.addEventListener('blur',()=>clearTimeout(dwellTimer));$('board').append(b);});
 $('draft').addEventListener('input',()=>{engine.setDraft($('draft').value);save();});
 $('confirm').onclick=()=>confirm(engine.state.config.confirmation);
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&engine.state.config.confirmation==='switch'&&!['TEXTAREA','INPUT','SELECT','BUTTON'].includes(e.target.tagName)){e.preventDefault();confirm('switch');}if(e.code==='Escape'){window.speechSynthesis?.cancel();notice('Speech stopped.');}});
@@ -51,12 +52,12 @@ $('apply').onclick=()=>result(engine.apply(engine.state.proposal?.id),'Change ap
 $('refuse').onclick=()=>result(engine.reject(engine.state.proposal?.id),'Change refused. Your current setup remains active.');
 $('undo').onclick=()=>result(engine.undo(),'Previous setup restored. Your draft has been preserved.');
 $('replay').onclick=()=>{
- const kind=$('scenario').value,modality=engine.state.config.modality;
- if(kind==='recovery'){for(const m of ['pointer','keyboard','gaze'])engine.observe({modality:m,quality:.95,available:true,error:false,latencyMs:700});engine.reviewRecovery?.();}
- for(let i=0;i<6;i++)engine.observe({modality:kind==='voice'?'voice':kind==='missing'?'physiology':modality,quality:kind==='missing'?0:.95,missing:kind==='missing',available:kind==='loss'?false:true,error:kind==='difficulty'||kind==='voice',latencyMs:kind==='difficulty'?1800:700,provenance:'synthetic-scenario',context:'synthetic-demo'});
+ const kind=$('scenario').value,modality=kind==='recovery'?'pointer':engine.state.config.modality;
+ if(kind==='recovery'){for(const m of ['pointer','keyboard'])engine.observe({modality:m,quality:.95,available:true,error:false,latencyMs:700});engine.reviewRecovery?.();}
+ for(let i=0;i<6;i++)engine.observe({modality:kind==='voice'?'voice':kind==='missing'?'physiology':modality,quality:kind==='missing'?0:.95,missing:kind==='missing',available:kind==='loss'?false:(posture.channels[modality]?.validated ?? true),error:kind==='difficulty'||kind==='voice',latencyMs:kind==='difficulty'?1800:700,provenance:'synthetic-scenario',context:'synthetic-demo'});
  engine.propose();render();notice(kind==='loss'?'Synthetic route loss detected. A fallback needs your approval.':kind==='recovery'?'Synthetic visibility restored. Undo can now return to the previous usable setup.':'Synthetic observations processed; no clinical inference was made.');
 };
-function fusion(conflict){const now=Date.now();const f=fuseEvidence({gaze:{target:phrases[0],quality:.9,timestamp:now},eeg:{target:conflict?phrases[1]:phrases[0],quality:.9,timestamp:now+20}});$('signal-result').textContent=`Synthetic fusion: ${f.status}. ${f.target?'Candidate selected; explicit confirmation still required.':'No selection made.'}`;if(f.target)pick(f.target);}
+function fusion(conflict){const now=Date.now();const f=fuseEvidence({gaze:{target:phrases[0],quality:.9,timestamp:now},eeg:{target:conflict?phrases[1]:phrases[0],quality:.9,timestamp:now}});$('signal-result').textContent=`Synthetic fusion: ${f.status}. ${f.target?'Candidate selected; explicit confirmation still required.':'No selection made.'}`;if(f.target)pick(f.target);}
 $('fusion').onclick=()=>fusion(false);$('conflict').onclick=()=>fusion(true);
 $('blink').onclick=()=>{const frames=[1,.1,.1,.1,1].map((openness,i)=>({openness,timestamp:i*80,quality:.95}));const b=detectBlinkCandidate(frames);$('signal-result').textContent=`Synthetic openness replay: ${b.candidate?'blink candidate':'abstain'}, ${b.durationMs} ms. Not a camera/video decoder.`;if(b.candidate&&engine.state.config.confirmation==='blink')confirm('blink');};
 $('voice-draft').onclick=()=>{result(engine.voiceContribution($('transcript').value),'Qualified simulated transcript copied to draft. Review before speaking.');updateDraft();};
@@ -101,8 +102,8 @@ function showVocabulary(){
  for(const word of vocabulary.search($('word-search').value,$('word-environment').value)){
   const b=document.createElement('button');b.textContent=word;
   b.onclick=()=>{if(engine.state.config.confirmation!=='dwell')pick(word);};
-  b.onpointerenter=()=>{if(engine.state.config.confirmation==='dwell'){pick(word);dwellTimer=setTimeout(()=>confirm('dwell'),engine.state.config.dwellMs+20);}};
-  b.onpointerleave=()=>clearTimeout(dwellTimer);$('word-results').append(b);
+  b.onpointerenter=()=>{if(engine.state.config.confirmation==='dwell'){pick(word);clearTimeout(dwellTimer);dwellTimer=setTimeout(()=>{if(engine.state.selected)confirm('dwell');},engine.state.config.dwellMs+20);}};
+  b.onpointerleave=()=>clearTimeout(dwellTimer);b.onfocus=()=>{if(engine.state.config.confirmation==='dwell'){pick(word);clearTimeout(dwellTimer);clearTimeout(dwellTimer);dwellTimer=setTimeout(()=>{if(engine.state.selected)confirm('dwell');},engine.state.config.dwellMs+20);}};b.onblur=()=>clearTimeout(dwellTimer);$('word-results').append(b);
  }
  $('personal-words').textContent=vocabulary.export().personal.map(p=>p.term+' ('+p.environment+')').join(', ')||'No personal words saved.';
 }
@@ -115,3 +116,15 @@ for(const action of ['add','remove'])$('word-'+action).onclick=()=>{
  try{if(!vocabulary)throw Error('Vocabulary is still loading');vocabulary[action]($('personal-term').value,$('word-environment').value);localStorage.setItem('neuralbridge-vocabulary',JSON.stringify(vocabulary.export()));showVocabulary();notice('Personal vocabulary updated only at your request.');}catch(error){notice(error.message);}
 };
 $('word-export').onclick=()=>{if(vocabulary)download('personal-vocabulary.json',JSON.stringify(vocabulary.export()));};
+const posture=new PostureReplay(engine);
+for(const [id,action] of Object.entries({'posture-start':()=>posture.start(),'posture-loss':()=>posture.lose(),'posture-restore':()=>posture.restoreGeometry(),'check-gaze':()=>posture.revalidate('gaze'),'check-blink':()=>posture.revalidate('blink'),'check-pupil':()=>posture.revalidate('pupil')})) {
+ $(id).onclick=()=>{const value=action();$('posture-result').textContent=JSON.stringify({phase:posture.phase,channels:posture.channels,result:value},null,2);render();};
+}
+
+const schedule=new MedicationTimeline([{id:'morning',name:'Fictional A',scheduledAt:'09:00'},{id:'evening',name:'Fictional A',scheduledAt:'21:00'}]);
+function scheduleView(){ $('med-timeline').textContent=schedule.list().map(e=>`${e.scheduledAt} ${e.name} | reminder: ${e.acknowledged?'acknowledged':'unacknowledged'} | administration: ${e.administration}`).join('\n'); }
+$('med-ack').onclick=()=>{schedule.acknowledge('morning');scheduleView();$('med-result').textContent='Morning reminder acknowledged; administration remains unknown. Evening reminder remains unacknowledged.';};
+$('med-reported').onclick=()=>{schedule.report('morning','reported-taken');scheduleView();};
+$('med-unknown').onclick=()=>{schedule.report('morning','unknown');scheduleView();};
+$('reposition-request').onclick=()=>safely(()=>client.request({id:'reposition-'+crypto.randomUUID(),action:'help',recipient:'sandbox-positioning-assistant'}),'posture-result');
+scheduleView();

@@ -180,8 +180,8 @@ export function createEngine({ now = () => Date.now() } = {}) {
 }
 
 /** Synthetic same-target evidence only. Agreement is not verified intent. */
-export function fuseEvidence({ gaze, eeg, maxSkewMs = 150 }) {
-  const valid = x => x && !x.missing && x.available !== false && Number.isFinite(x.quality) && x.quality >= 0.6 && Number.isFinite(x.timestamp);
+export function fuseEvidence({ gaze, eeg, maxSkewMs = 150, now = Date.now(), maxAgeMs = 1000 }) {
+  const valid = x => x && !x.missing && !x.artifact && x.available !== false && Number.isFinite(x.quality) && x.quality >= 0.6 && x.quality <= 1 && Number.isFinite(x.timestamp) && x.timestamp<=now && now-x.timestamp<=maxAgeMs;
   const channels = [gaze, eeg].filter(valid);
   if (!channels.length) return { target: null, status: 'insufficient', coverage: 0 };
   if (channels.length === 1) return { target: channels[0].target, status: 'single-channel', coverage: 0.5 };
